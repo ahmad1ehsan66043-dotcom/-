@@ -9,12 +9,13 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
         }
         
         body {
             background: #0f172a;
-            color: #e2e8f0;
+            color: #f1f5f9;
+            min-height: 100vh;
             padding: 20px;
         }
         
@@ -29,15 +30,46 @@
             border-radius: 15px;
             margin-bottom: 25px;
             border: 1px solid #334155;
+            text-align: center;
         }
         
         h1 {
             color: #60a5fa;
-            text-align: center;
             margin-bottom: 10px;
         }
         
-        .status-bar {
+        .connection-info {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border: 1px solid #334155;
+        }
+        
+        .qr-box {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        #qrcode {
+            display: inline-block;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        
+        .link-box {
+            background: #0f172a;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            margin: 15px 0;
+            word-break: break-all;
+            border: 1px solid #334155;
+        }
+        
+        .status-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 15px;
@@ -45,7 +77,7 @@
         }
         
         @media (max-width: 768px) {
-            .status-bar {
+            .status-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
         }
@@ -69,28 +101,30 @@
             font-weight: bold;
         }
         
-        .connected { color: #4ade80; }
-        .disconnected { color: #f87171; }
+        .online { color: #4ade80; }
+        .offline { color: #f87171; }
         
         .preview-section {
             background: #1e293b;
             border-radius: 10px;
-            padding: 25px;
+            padding: 20px;
             margin-bottom: 25px;
             border: 1px solid #334155;
         }
         
         .preview-title {
+            color: #60a5fa;
+            margin-bottom: 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
         }
         
         .image-container {
             background: #0f172a;
-            border-radius: 10px;
+            border-radius: 8px;
             padding: 20px;
+            text-align: center;
             min-height: 400px;
             display: flex;
             align-items: center;
@@ -98,11 +132,10 @@
             border: 1px solid #334155;
         }
         
-        #liveImage {
+        #previewImage {
             max-width: 100%;
             max-height: 360px;
             border-radius: 8px;
-            border: 2px solid #60a5fa;
             display: none;
         }
         
@@ -111,17 +144,27 @@
             font-size: 18px;
         }
         
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+        
         .btn {
-            padding: 12px 24px;
+            padding: 15px 30px;
             border: none;
             border-radius: 8px;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
-            display: inline-flex;
+            display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            min-width: 180px;
+            justify-content: center;
         }
         
         .btn-primary {
@@ -142,6 +185,12 @@
         .btn-danger {
             background: #ef4444;
             color: white;
+        }
+        
+        .btn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            transform: none !important;
         }
         
         .images-grid {
@@ -213,96 +262,106 @@
     </style>
 </head>
 <body>
-    <div class="notification" id="notification">
-        <span id="notificationText"></span>
-    </div>
+    <div class="notification" id="notification"></div>
     
     <div class="container">
         <header>
-            <h1>🎮 پنل کنترل دوربین زنده</h1>
-            <p style="text-align: center; color: #94a3b8;">
-                در انتظار اتصال از گوشی... لطفاً صفحه دوربین را روی گوشی باز کنید
-            </p>
+            <h1>🎮 پنل کنترل دوربین</h1>
+            <p>📱 تصاویر از گوشی به صورت خودکار دریافت می‌شوند</p>
         </header>
         
-        <div class="status-bar">
-            <div class="status-card">
-                <div class="status-label">وضعیت اتصال</div>
-                <div class="status-value disconnected" id="connectionStatus">⏳ منتظر</div>
+        <div class="connection-info">
+            <h3>📱 راه‌اندازی گوشی:</h3>
+            <div class="qr-box">
+                <div id="qrcode"></div>
             </div>
-            
+            <div class="link-box" id="cameraLink">
+                در حال بارگذاری...
+            </div>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="copyLink()">
+                    📋 کپی لینک
+                </button>
+                <button class="btn btn-success" onclick="testCamera()">
+                    📸 تست دوربین
+                </button>
+            </div>
+        </div>
+        
+        <div class="status-grid">
+            <div class="status-card">
+                <div class="status-label">وضعیت دوربین</div>
+                <div class="status-value" id="cameraStatus">---</div>
+            </div>
             <div class="status-card">
                 <div class="status-label">تصاویر دریافتی</div>
                 <div class="status-value" id="imageCount">0</div>
             </div>
-            
             <div class="status-card">
                 <div class="status-label">آخرین تصویر</div>
                 <div class="status-value" id="lastImageTime">--:--</div>
             </div>
-            
             <div class="status-card">
-                <div class="status-label">مشاهده زنده</div>
-                <div class="status-value pulse" id="liveStatus">●</div>
+                <div class="status-label">بروزرسانی</div>
+                <div class="status-value" id="updateStatus">⏳</div>
             </div>
         </div>
         
         <div class="preview-section">
             <div class="preview-title">
-                <h3>🖼️ تصویر زنده</h3>
-                <div>
-                    <button class="btn btn-primary" onclick="downloadCurrent()" id="downloadBtn" disabled>
-                        ⬇️ دانلود
-                    </button>
-                    <button class="btn btn-danger" onclick="clearAll()">
-                        🗑️ پاک کردن
-                    </button>
-                </div>
+                <span>🖼️ پیش‌نمایش</span>
+                <button class="btn btn-success" onclick="downloadCurrent()" id="downloadBtn" disabled>
+                    ⬇️ دانلود تصویر
+                </button>
             </div>
-            
             <div class="image-container">
                 <div class="placeholder" id="imagePlaceholder">
-                    🔄 منتظر دریافت اولین تصویر...
+                    🔄 منتظر دریافت تصویر از گوشی...
                 </div>
-                <img id="liveImage" alt="تصویر زنده">
+                <img id="previewImage" alt="پیش‌نمایش">
             </div>
         </div>
         
         <div>
-            <h3>📸 آرشیو تصاویر (آخرین ۱۰ تصویر)</h3>
+            <h3>📁 آرشیو تصاویر (آخرین ۲۰ تصویر)</h3>
             <div class="images-grid" id="imagesGrid">
                 <!-- تصاویر اینجا نمایش داده می‌شوند -->
             </div>
         </div>
     </div>
     
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script>
         // متغیرهای اصلی
         let images = [];
         let currentImage = null;
         let lastUpdateTime = 0;
-        let totalImages = 0;
+        let checkInterval = null;
         
         // عناصر DOM
-        const connectionStatus = document.getElementById('connectionStatus');
+        const cameraStatus = document.getElementById('cameraStatus');
         const imageCount = document.getElementById('imageCount');
         const lastImageTime = document.getElementById('lastImageTime');
-        const liveStatus = document.getElementById('liveStatus');
-        const liveImage = document.getElementById('liveImage');
+        const updateStatus = document.getElementById('updateStatus');
+        const previewImage = document.getElementById('previewImage');
         const imagePlaceholder = document.getElementById('imagePlaceholder');
         const downloadBtn = document.getElementById('downloadBtn');
         const imagesGrid = document.getElementById('imagesGrid');
         const notification = document.getElementById('notification');
-        const notificationText = document.getElementById('notificationText');
+        const cameraLink = document.getElementById('cameraLink');
+        
+        // بارگذاری اولیه
+        loadImages();
+        updateDisplay();
+        setupQRCode();
+        startChecking();
         
         // بارگذاری تصاویر از localStorage
-        function loadSavedImages() {
+        function loadImages() {
             try {
-                const saved = localStorage.getItem('panel_images');
+                const saved = localStorage.getItem('camera_images');
                 if (saved) {
                     images = JSON.parse(saved);
-                    totalImages = images.length;
-                    updateDisplay();
                 }
             } catch (e) {
                 images = [];
@@ -311,70 +370,125 @@
         
         // ذخیره تصاویر
         function saveImages() {
-            localStorage.setItem('panel_images', JSON.stringify(images));
+            localStorage.setItem('camera_images', JSON.stringify(images));
         }
         
-        // دریافت تصاویر از پنجره دوربین
-        window.addEventListener('message', function(event) {
-            // فقط پیام‌های از مبدا قابل اعتماد را قبول کن
-            if (event.data.type === 'NEW_IMAGE') {
-                const newImage = {
-                    id: Date.now(),
-                    data: event.data.data,
-                    time: event.data.time,
-                    timestamp: new Date(event.data.time).toLocaleString('fa-IR'),
-                    count: event.data.count
-                };
-                
-                // اضافه کردن به لیست
-                images.unshift(newImage);
-                
-                // فقط ۱۰ تصویر آخر را نگه دار
-                if (images.length > 10) {
-                    images = images.slice(0, 10);
+        // بررسی تصاویر جدید
+        function checkForNewImage() {
+            try {
+                // شبیه‌سازی دریافت تصویر جدید
+                const now = Date.now();
+                if (now - lastUpdateTime > 3000) { // هر ۳ ثانیه
+                    // در حالت واقعی اینجا از localStorage یا سرور می‌خوانیم
+                    updateStatus.textContent = '🔄';
+                    
+                    // شبیه‌سازی دریافت تصویر (برای تست)
+                    if (Math.random() > 0.7 && images.length < 5) {
+                        simulateNewImage();
+                    }
+                    
+                    lastUpdateTime = now;
+                    updateStatus.textContent = '✅';
+                    
+                    setTimeout(() => {
+                        updateStatus.textContent = '⏳';
+                    }, 1000);
                 }
                 
-                // ذخیره
-                saveImages();
-                
-                // به‌روزرسانی نمایش
                 updateDisplay();
                 
-                // نمایش تصویر زنده
-                showLiveImage(newImage);
-                
-                // نمایش نوتیفیکیشن
-                showNotification(`📸 تصویر جدید دریافت شد (${newImage.count})`);
-                
-                // به‌روزرسانی وضعیت
-                connectionStatus.textContent = '✅ متصل';
-                connectionStatus.className = 'status-value connected';
-                
-                // انیمیشن live
-                liveStatus.classList.add('pulse');
-                setTimeout(() => liveStatus.classList.remove('pulse'), 1000);
+            } catch (e) {
+                console.error('خطا در بررسی:', e);
             }
-        });
+        }
         
-        // نمایش تصویر زنده
-        function showLiveImage(image) {
+        // شبیه‌سازی تصویر جدید
+        function simulateNewImage() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 640;
+            canvas.height = 480;
+            const ctx = canvas.getContext('2d');
+            
+            // ایجاد تصویر نمونه
+            const colors = ['#1e40af', '#7c3aed', '#059669', '#dc2626'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = color;
+            ctx.fillRect(50, 50, canvas.width - 100, canvas.height - 100);
+            
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 30px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('📸 تصویر تست', canvas.width/2, canvas.height/2 - 20);
+            
+            ctx.font = '20px Arial';
+            ctx.fillText(new Date().toLocaleTimeString('fa-IR'), canvas.width/2, canvas.height/2 + 30);
+            ctx.fillText(`شماره: ${images.length + 1}`, canvas.width/2, canvas.height/2 + 70);
+            
+            const imageData = canvas.toDataURL('image/jpeg', 0.9);
+            
+            addNewImage(imageData);
+        }
+        
+        // افزودن تصویر جدید
+        function addNewImage(imageData) {
+            const newImage = {
+                id: Date.now(),
+                data: imageData,
+                timestamp: new Date().toLocaleString('fa-IR'),
+                time: Date.now()
+            };
+            
+            images.unshift(newImage);
+            if (images.length > 20) {
+                images = images.slice(0, 20);
+            }
+            
+            saveImages();
+            updateDisplay();
+            
+            // نمایش در پیش‌نمایش
+            showImage(newImage);
+            
+            showNotification('📸 تصویر جدید دریافت شد');
+        }
+        
+        // نمایش تصویر
+        function showImage(image) {
             currentImage = image;
-            liveImage.src = image.data;
-            liveImage.style.display = 'block';
+            previewImage.src = image.data;
+            previewImage.style.display = 'block';
             imagePlaceholder.style.display = 'none';
             
-            // فعال کردن دکمه دانلود
             downloadBtn.disabled = false;
-            downloadBtn.onclick = () => downloadImage(image);
         }
         
         // به‌روزرسانی نمایش
         function updateDisplay() {
-            imageCount.textContent = totalImages;
+            imageCount.textContent = images.length;
             
             if (images.length > 0) {
                 lastImageTime.textContent = images[0].timestamp;
-                totalImages = images.length;
+                
+                // به‌روزرسانی وضعیت دوربین
+                const lastImageAge = Date.now() - images[0].time;
+                if (lastImageAge < 10000) { // کمتر از ۱۰ ثانیه
+                    cameraStatus.textContent = '✅ فعال';
+                    cameraStatus.className = 'status-value online';
+                } else if (lastImageAge < 30000) { // کمتر از ۳۰ ثانیه
+                    cameraStatus.textContent = '⚠️ غیرفعال';
+                    cameraStatus.className = 'status-value offline';
+                } else {
+                    cameraStatus.textContent = '❌ قطع';
+                    cameraStatus.className = 'status-value offline';
+                }
+            } else {
+                cameraStatus.textContent = '---';
+                cameraStatus.className = 'status-value';
+                lastImageTime.textContent = '--:--';
             }
             
             // به‌روزرسانی گرید تصاویر
@@ -389,10 +503,9 @@
                 const card = document.createElement('div');
                 card.className = 'image-card';
                 card.innerHTML = `
-                    <img src="${img.data}" alt="تصویر" onclick="selectImage(${img.id})">
+                    <img src="${img.data}" alt="تصویر" onclick="selectImage('${img.id}')">
                     <div class="image-info">
                         <div>${img.timestamp}</div>
-                        <div>شماره: ${img.count || ''}</div>
                     </div>
                 `;
                 imagesGrid.appendChild(card);
@@ -401,23 +514,19 @@
         
         // انتخاب تصویر
         function selectImage(imageId) {
-            const image = images.find(img => img.id === imageId);
+            const image = images.find(img => img.id == imageId);
             if (image) {
-                showLiveImage(image);
+                showImage(image);
             }
         }
         
         // دانلود تصویر جاری
         function downloadCurrent() {
             if (!currentImage) return;
-            downloadImage(currentImage);
-        }
-        
-        // دانلود یک تصویر
-        function downloadImage(image) {
+            
             const link = document.createElement('a');
-            link.href = image.data;
-            link.download = `capture-${image.id}.jpg`;
+            link.href = currentImage.data;
+            link.download = `capture-${currentImage.id}.jpg`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -425,24 +534,43 @@
             showNotification('✅ تصویر دانلود شد');
         }
         
-        // پاک کردن همه
-        function clearAll() {
-            if (confirm('آیا مطمئنید می‌خواهید همه تصاویر را پاک کنید؟')) {
-                images = [];
-                saveImages();
-                updateDisplay();
-                
-                liveImage.style.display = 'none';
-                imagePlaceholder.style.display = 'block';
-                downloadBtn.disabled = true;
-                
-                showNotification('🗑️ همه تصاویر پاک شدند');
-            }
+        // کپی لینک دوربین
+        function copyLink() {
+            const link = window.location.origin + '/camera-stream/camera.html';
+            navigator.clipboard.writeText(link)
+                .then(() => showNotification('✅ لینک کپی شد'))
+                .catch(() => showNotification('❌ خطا در کپی لینک'));
+        }
+        
+        // تست دوربین
+        function testCamera() {
+            simulateNewImage();
+            showNotification('📸 تست دوربین انجام شد');
+        }
+        
+        // تنظیم QR کد
+        function setupQRCode() {
+            const link = window.location.origin + '/camera-stream/camera.html';
+            cameraLink.textContent = link;
+            
+            QRCode.toCanvas(document.getElementById('qrcode'), link, {
+                width: 200,
+                margin: 2,
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                }
+            });
+        }
+        
+        // شروع بررسی دوره‌ای
+        function startChecking() {
+            checkInterval = setInterval(checkForNewImage, 2000);
         }
         
         // نمایش نوتیفیکیشن
         function showNotification(message) {
-            notificationText.textContent = message;
+            notification.textContent = message;
             notification.style.display = 'block';
             
             setTimeout(() => {
@@ -450,50 +578,11 @@
             }, 3000);
         }
         
-        // تست: شبیه‌سازی دریافت تصویر (برای تست)
-        function testSimulation() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 400;
-            canvas.height = 300;
-            const ctx = canvas.getContext('2d');
-            
-            ctx.fillStyle = '#3b82f6';
-            ctx.fillRect(0, 0, 400, 300);
-            ctx.fillStyle = 'white';
-            ctx.font = 'bold 30px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('📸 تصویر تست', 200, 150);
-            ctx.font = '20px Arial';
-            ctx.fillText(new Date().toLocaleTimeString('fa-IR'), 200, 180);
-            
-            const imageData = canvas.toDataURL('image/jpeg');
-            
-            // شبیه‌سازی پیام
-            window.postMessage({
-                type: 'NEW_IMAGE',
-                data: imageData,
-                time: Date.now(),
-                count: 999
-            }, '*');
-        }
-        
-        // وقتی صفحه لود شد
-        window.addEventListener('load', () => {
-            loadSavedImages();
-            updateDisplay();
-            
-            // اطلاع به کاربر
-            showNotification('پنل کنترل آماده است. لطفاً صفحه دوربین را روی گوشی باز کنید.');
-            
-            // بعد از ۳ ثانیه یک تصویر تست نشان بده
-            setTimeout(testSimulation, 3000);
-        });
-        
         // توابع عمومی
         window.selectImage = selectImage;
         window.downloadCurrent = downloadCurrent;
-        window.clearAll = clearAll;
-        window.testSimulation = testSimulation;
+        window.copyLink = copyLink;
+        window.testCamera = testCamera;
         
     </script>
 </body>
